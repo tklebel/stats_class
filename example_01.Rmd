@@ -1,0 +1,82 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r, echo=FALSE}
+library(tidyverse)
+extrafont::loadfonts(device = "win")
+theme_set(theme_bw())
+```
+
+
+
+# Example 1
+
+```{r}
+
+df <- tibble(
+  x = c(1, 2, 6, 7, 8),
+  y = c(5, 5.5, 7, 7, 10)
+)
+```
+
+# Task (a) What is the regression model like and what assumptions are made?
+
+
+
+
+# Task (b) Determine the parameters of the model!
+
+```{r}
+my_mod <- lm(y ~ x, data = df)
+my_mod
+```
+
+
+Do it manually:
+```{r}
+beta1 <- cov(df$x, df$y)/var(df$x)
+beta0 <- mean(df$y) - beta1 * mean(df$x)
+paste("beta =", round(beta1, 4))
+paste("intercept =", round(beta0, 4))
+
+```
+
+
+
+
+# Subtask (c) Draw a scatterplot, the regression line and the residuals!
+
+```{r}
+df <- df %>% 
+  mutate(resid = my_mod$residuals,
+         y_line = y - resid,
+         ymax = pmax(y, y_line),
+         ymin = pmin(y, y_line))
+
+ggplot(df, aes(x, y)) + 
+  geom_point() +
+  geom_abline(slope = beta1, intercept = beta0) +
+  geom_linerange(aes(y = y, ymin = ymin, ymax = ymax))
+```
+
+
+# Task (d) Estimate the variance of the error term!
+
+# Task (e) Find the p-value of the parameter beta!
+
+# Task (f) Find the confidence intervall for the parameter beta!
+
+# Task (g) Determine an appropriate measure for goodness of fit!
+```{r}
+
+```
+
+
+# Task (h) Predict the cost for x = 10!
+```{r}
+beta0 + beta1 * 10
+```
+
+# Task (i) Find the prodiction intervall at x = 10 and interpret the result obtained!
