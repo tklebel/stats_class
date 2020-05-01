@@ -1,0 +1,141 @@
+---
+title: "Example 2"
+author: "Thomas Klebel"
+date: "1 5 2020"
+output: html_document
+---
+
+```{r, echo=TRUE, message=FALSE}
+library(tidyverse)
+library(skimr)
+
+theme_set(theme_bw())
+
+df <- read_csv("data/Luege.csv")
+```
+
+
+# Task description
+A study on determinants of lies among spouses involves 601 married and randomly selected
+persons. The independent variables are: person ID, SEX (“M”, “F”), AGE (in 10 years), years
+of marridge J_VERH, existence of children CHILD (“Ja”, “Nein”), degree of religiosity REL
+(1 = absolutely not to 5 = very much), quality of the relationship DEGR (1 = very bad to 5
+= excellent), number of affairs in the previous year NUM_AFF and number of lies told in the
+previouos years LUEGE The data can be found in the dataset “Luege.csv”!
+Carry out a regression analysis for explain the number of lies among spouses (LIES)!
+
+
+# Explore
+```{r}
+skim(df)
+```
+
+# set to factors
+```{r}
+df_clean <- df %>% 
+  mutate(J_VERH = parse_number(J_VERH, locale = locale(decimal_mark = ","))) %>% 
+  mutate_at(vars(REL, GRAD), as.factor) %>% 
+  select(-ID)
+```
+
+
+
+
+# (a) Which of the features SEX, AGE, Y_MARR, CHILD, REL, DEGR and NUM_AFF are significant (p = 0:05)?
+```{r}
+mod1 <- lm(LUEGE ~ ., data = df_clean)
+```
+
+- Geschlecht
+- ALTER
+- KINDER
+- REL
+- ANZAHL_AFF
+
+
+(b) Interpret the parameters!
+```{r}
+summary(mod1)
+```
+- Männer lügen häufiger (knapp 3 Lügen mehr)
+- Je älter die Befragten, desto mehr lügen sie (sehr schwacher effekt, 10 Jahre 
+mehr ergibt .8 Lügen mehr)
+- Personen ohne Kinder erzählen ca. 4.2 Lügen weniger
+- Je religiöser, desto mehr Lügen erzählen die Befragten
+- Je mehr Affären, desto mehr Lügen (pro Affäre ca 5 Lügen mehr)
+
+
+# (c) By what extend do men lie more often than women?
+Knapp 3 Lügen mehr (2.98 Lügen)
+
+# (d) How much more lies are expected, if instead of an age of 50 years an age of 60 years is considered, while all other features remain constant?
+0.86 mehr Lügen. (Rechenweg Coef mal 10, ergibt Vergrößerung über 10 Jahre)
+
+Beweis:
+```{r}
+pred_base <- tibble(
+  GESCHLECHT = "M",
+  J_VERH = 10,
+  KINDER = "Nein",
+  REL = "1",
+  GRAD = "1",
+  ANZAHL_AFF = 0
+)
+
+pred_base %>% 
+  mutate(ALTER = 50) %>% 
+  predict(mod1, newdata = .)
+
+pred_base %>% 
+  mutate(ALTER = 60) %>% 
+  predict(mod1, newdata = .)
+```
+
+
+
+
+# (e) Determine R2 and interpret it!
+```{r}
+summary(mod1)$adj.r.squared
+```
+Ein sehr hoher Teil der Varianz bezgülich wie viele Lügen erzählt werden kann 
+erklärt werden.
+
+# (f) How large is the standard deviation of the error term? What is the standard deviation of AGE?
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx
+
+
+# (g) Carry out an F-test for the hypothesis H0 : beta1 = beta2 =    = betak = 0! What does the result tell us?
+Mindestens ein betakoeffizient ist nicht null.
+
+# (h) How does the model change, if in addition to the existing variables ALTER2 is used as a predictor?
+```{r}
+mod2 <- update(mod1, . ~ . + I(ALTER^2))
+summary(mod2)
+```
+
+Der quadratische Effekt für das Alter ist signifikant und negativ. Das bedeutet,
+dass der Alterseffekt mit steigendem Alter kleiner wird. Junge Leute lügen
+pro zusätzlichem Alter deutlich mehr, ältere kaum. Bivariate Darstellung:
+
+```{r}
+ggplot(df_clean, aes(ALTER, LUEGE)) +
+  geom_point() +
+  geom_smooth()
+```
+
+
+
+# (i) How does the number of lies change on average in the new model, if AGE is increased from 50 years to 60 Jahre in the new model and the other variables remain constant?
+Die Anzahl der Lügen nimmt ab (vgl. obiger Plot), um 0.88603 Lügen.
+```{r}
+pred_base %>% 
+  mutate(ALTER = 50) %>% 
+  predict(mod2, newdata = .)
+
+pred_base %>% 
+  mutate(ALTER = 60) %>% 
+  predict(mod2, newdata = .)
+```
+
+
