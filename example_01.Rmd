@@ -1,6 +1,6 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output: html_document
 ---
 
 ```{r, echo=FALSE}
@@ -79,4 +79,4 @@ ggplot(df, aes(x, y)) +
 beta0 + beta1 * 10
 ```
 
-# Task (i) Find the prodiction intervall at x = 10 and interpret the result obtained!
+# Task (i) Find the prediction intervall at x = 10 and interpret the result obtained!
