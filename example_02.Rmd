@@ -1,0 +1,59 @@
+---
+title: "Example 2"
+author: "Thomas Klebel"
+date: "1 5 2020"
+output: html_document
+---
+
+# Task description
+Kurt uses a regression model of the form
+log(Y) = mu(x) + e = alpha + beta * log(x) + e
+to estimate the influence of advertising expenditures (x) on the number of sold
+wholewheat breads (y). His estimation yields the following results: 
+alpha_hat = -5 and beta_hat = 1.
+
+# (a) What effect on the number of sold wholewheat breads is described by beta_hat?
+Der Effekt beschreibt die Elastizität.
+
+# (b) When the expenditures are increased by 1 unit, to what extent does the number of wholewheat breads increase on average?
+
+Von Auer, Teil 14, Seite 287
+
+Direkt durch einsetzen in die Formel auch erklärbar: beta kürzt sich weg 
+(log(1) = 0), daher beta koeffizient irrelevant, bleibt alpha. Um direkten Einfluss
+auf Y zu haben müssen wir den log loswerden, mit exponentialfunktion, also exp(-5).
+```{r}
+exp(-5)*1*1^1
+```
+Ausgaben um eine Einheit vergrößern vergrößert Zahl der Vollkornbrote um 0.006737947. 
+
+# (c) Under what conditions does the estimator satisfy the BLUE/BUE property? Why is this property important?
+
+
+## BLUE wenn: ABC Annahmen:
+### A-Annahmen: Aussage über Art des Zusammenhanges
+
+- y = b0 + b1x1 + b2x2 -> linearer Zusammenhang
+- all Variable sind im Modell (kein Bias)
+- bj sind konstant (nicht abhängig von x, also keine Strukturbrüche)
+
+### B-Annahmen: Spezifikation des Störterms 
+
+- Erwartungswert ist 0 (kein Bias)
+- Konstante Varianz (Homoskedastizität)
+- Cov(Ei, Ej) = 0 -> Keine Zeitabhängig
+
+
+### C-Annahmen: Spezifikation der Variablen
+
+- X Achse gibt es keine Zufallsvariable (wir geben vor, was wir untersuchen wollen, macht die Herleitung leichter) Typ1 regression gibt X vor mit festen Werten, kontrolliertes Design. Typ2 sagt X ist Zufallsvariable
+- Varianz x (sx^2) darf nicht 0 sein. Wenn es nur ein x gibt, kann man keine Gerade legen.
+
+
+### BUE 
+wenn zusätzlich Störterm normalverteilt ist, mit E - N(0,sigma)
+
+### Warum wichtig?
+Ich möchte offensichtlich keinen schlechteren Schätzer als ich bekommen kann.
+Bias z.b. in der Schätzung wäre natürlich schlecht. Dadurch ziehe ich falsche
+Schlüsse bzgl der Bedeutsamkeit von Faktoren oder treffe falsche Vorhersagen.
