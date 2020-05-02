@@ -1,0 +1,78 @@
+---
+title: "Example 2"
+author: "Thomas Klebel"
+date: "1 5 2020"
+output: html_document
+---
+
+# Taske desc
+The data contains the quantity of ice cream (CONS) consumed by 29 persons during the months
+June to September. Explanantory variables are: INC (income of the person), TEMP (temperature
+in F), PRICE (Price). A regression analysis yields the following results:
+
+            Estimate   Std. Error  t value   Pr(>jtj)
+---------  ----------  ----------  --------  --------
+(Intercept) -6329.81    3105.35     -2.04      0.05
+PRICE          23.35      11.48      2.03      0.05
+INC            78.08      36.43      2.14      0.04
+TEMP            2.82       0.42      6.77      0.00
+PRICE:INC      -0.28       0.13      -2.07     0.05
+
+```
+Residual standard error: 30.94 on 24 degrees of freedom
+Multiple R-squared: 0.7411, Adjusted R-squared: 0.698
+F-statistic: 17.18 on 4 and 24 DF, p-value: 8.968e-07
+```
+
+# (a) How does the estimated regression model look like?
+
+$y = -6329.81 + 23.35*PRICE + 78.08*INC + 2.82*TEMP + -0.28*PRICE*INC$
+
+# (b) What does -0:28 in column 1 mean?
+Der Effekt ist nicht statistisch signifikant!!! Wenn trotzdem interpretieren, 
+dann: 
+```{r, message=FALSE}
+library(tidyverse)
+# try out how interaction works
+df <- tibble(
+  price = seq(1, 100, length.out = 1000),
+  inc = runif(1000, 2000, 6000),
+  temp = 60,
+)
+
+
+df %>% 
+  mutate(inc_group = cut_number(inc, 5),
+         pred = -6329.81 + 23.35*price + 78.08*inc + 2.82*temp + -0.28*price*inc) %>% 
+  ggplot(aes(price, pred, colour = inc_group)) +
+  geom_smooth() +
+  theme_bw()
+```
+
+
+
+Basiseffekte: Je höher einkommen und je höher der Preis, desto mehr wird verkauft.
+Aber: insgesamt je höher der Preis, desto weniger wird gekauft, dieser Effekt ist
+stärker bei höheren Einkommen. Diese kaufen zwar mehr, reagieren aber "stärker"
+auf die Preisänderung.
+# (c) Interpret the other parameters, if they are significant.
+Höhere Temperatur und höheres Einkommen führen zu mehr verkauftem Eis.
+
+# (d) How large are the variance of the error term and the adjusted R-squared (interpret the figures)?
+Varianz des Fehlers: Im Mittel weicht unsere Schätzung um 30.94 von den wahren
+Werten ab.
+
+
+Adjusted R-squared: 0.698, das ist recht hoch, allerdings kann ca. ein drittel
+der Varianz nicht erklärt werden, weil mglw. relevante Parameter fehlen.
+
+# (e) What is the confidence interval of the temperature effect?
+```{r}
+interval <- qnorm(.975) * 0.42
+# upper bound:
+2.82 +  interval
+
+# lower bound
+2.82 - interval
+```
+
