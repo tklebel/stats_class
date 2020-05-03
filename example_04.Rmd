@@ -103,7 +103,7 @@ erklärt werden.
 
 # (f) How large is the standard deviation of the error term? What is the standard deviation of AGE?
 Falls standard error gemeint ist, direkt die werte in den ersten zeilen, sonst
-die wurzeln.
+die wurzeln. Es sollten eigentlich direkt die ersten werte korrekt sein.
 ```{r}
 std_err <- 5.092
 # std deviation of error
