@@ -1,17 +1,20 @@
 ---
-title: "R Notebook"
+title: "Example 1"
 output: html_document
 ---
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, message=FALSE}
 library(tidyverse)
 extrafont::loadfonts(device = "win")
 theme_set(theme_bw())
 ```
 
+# Task description
+For reasons of budget planning a company needs to estimate the cost of product launch several
+years in advance. For this purpose the cost of past product launches is estimated by means of a
+regression analysis. For 5 products the cost (y) depending on the number of competing’ products
+(x) was:
 
-
-# Example 1
 
 ```{r}
 
@@ -23,6 +26,32 @@ df <- tibble(
 
 # Task (a) What is the regression model like and what assumptions are made?
 
+$cost = \alpha + \beta_1*\text{no. of competing products} + \epsilon$
+
+ABC Annahmen 
+
+### A-Annahmen: Aussage über Art des Zusammenhanges
+
+- y = b0 + b1x1 + b2x2 -> linearer Zusammenhang
+- all Variable sind im Modell (kein Bias)
+- bj sind konstant (nicht abhängig von x, also keine Strukturbrüche)
+
+### B-Annahmen: Spezifikation des Störterms 
+
+- Erwartungswert ist 0 (kein Bias)
+- Konstante Varianz (Homoskedastizität)
+- Cov(Ei, Ej) = 0 -> Keine Zeitabhängig
+
+
+### C-Annahmen: Spezifikation der Variablen
+
+- X Achse gibt es keine Zufallsvariable (wir geben vor, was wir untersuchen wollen, macht die Herleitung leichter) 
+- Varianz x (sx^2) darf nicht 0 sein. Wenn es nur ein x gibt, kann man keine Gerade legen.
+
+
+### BUE 
+wenn zusätzlich Störterm normalverteilt ist, mit E - N(0,sigma)
+
 
 
 
@@ -30,7 +59,7 @@ df <- tibble(
 
 ```{r}
 my_mod <- lm(y ~ x, data = df)
-my_mod
+summary(my_mod)
 ```
 
 
@@ -63,8 +92,29 @@ ggplot(df, aes(x, y)) +
 
 
 # Task (d) Estimate the variance of the error term!
+```{r}
+# calculate residuals
+df %>% 
+  mutate(y_pred = 4.2526 + 0.5515  * x,
+         r_squared = (y - y_pred)^2) %>% 
+  summarise(var_std_err = sum(r_squared) * 1/(length(x) - 2))
+```
+
+
 
 # Task (e) Find the p-value of the parameter beta!
+```{r}
+# this is not working out.
+# find std_dev of beta
+x_var <- var(df$x)
+df %>% 
+  mutate(dev = x - mean(x)) %>% 
+  summarise(denom = sum(dev^2),
+            std_dev_beta = sqrt(x_var/denom))
+
+# t <- beta_1/
+```
+
 
 # Task (f) Find the confidence intervall for the parameter beta!
 
