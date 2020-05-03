@@ -102,7 +102,18 @@ Ein sehr hoher Teil der Varianz bezgülich wie viele Lügen erzählt werden kann
 erklärt werden.
 
 # (f) How large is the standard deviation of the error term? What is the standard deviation of AGE?
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx
+Falls standard error gemeint ist, direkt die werte in den ersten zeilen, sonst
+die wurzeln.
+```{r}
+std_err <- 5.092
+# std deviation of error
+sqrt(std_err)
+
+std_err_age <- 0.028694   
+# std dev of age 
+sqrt(std_err_age)
+```
+
 
 
 # (g) Carry out an F-test for the hypothesis H0 : beta1 = beta2 =    = betak = 0! What does the result tell us?
