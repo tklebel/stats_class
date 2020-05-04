@@ -57,14 +57,17 @@ wenn zusätzlich Störterm normalverteilt ist, mit E - N(0,sigma)
 
 # Task (b) Determine the parameters of the model!
 
-```{r}
-my_mod <- lm(y ~ x, data = df)
-summary(my_mod)
-```
+
 
 
 Do it manually:
 ```{r}
+covariance <- df %>% 
+  mutate(x_var = (x - mean(x)),
+         y_var = (y - mean(y))) %>% 
+  summarise(cov = sum(x_var*y_var)/(length(x) - 1)) %>% 
+  pull(cov)
+
 beta1 <- cov(df$x, df$y)/var(df$x)
 beta0 <- mean(df$y) - beta1 * mean(df$x)
 paste("beta =", round(beta1, 4))
@@ -79,10 +82,10 @@ paste("intercept =", round(beta0, 4))
 
 ```{r}
 df <- df %>% 
-  mutate(resid = my_mod$residuals,
-         y_line = y - resid,
-         ymax = pmax(y, y_line),
-         ymin = pmin(y, y_line))
+  mutate(pred = beta0 + beta1 * x,
+         resid = pred - y,
+         ymax = pmax(y, pred),
+         ymin = pmin(y, pred))
 
 ggplot(df, aes(x, y)) + 
   geom_point() +
@@ -94,33 +97,61 @@ ggplot(df, aes(x, y)) +
 # Task (d) Estimate the variance of the error term!
 ```{r}
 # calculate residuals
-df %>% 
-  mutate(y_pred = 4.2526 + 0.5515  * x,
-         r_squared = (y - y_pred)^2) %>% 
-  summarise(var_std_err = sum(r_squared) * 1/(length(x) - 2))
+error_var <- df %>% 
+  mutate(y_pred = beta0 + beta1 * x,
+         residuals_squared = (y - y_pred)^2) %>% 
+  summarise(var_std_err = sum(residuals_squared) * 1/(length(x) - 2))
+error_var
 ```
 
 
 
 # Task (e) Find the p-value of the parameter beta!
 ```{r}
-# this is not working out.
-# find std_dev of beta
-x_var <- var(df$x)
-df %>% 
-  mutate(dev = x - mean(x)) %>% 
-  summarise(denom = sum(dev^2),
-            std_dev_beta = sqrt(x_var/denom))
+# calculate standard dev for beta (auer 6.1.3)
+# calculate sum of squared distance (summe quadratischer abweichungen)
+s_xx <- df %>% 
+  mutate(s_xx = (x - mean(x))^2) %>% 
+  summarise(s_xx = sum(s_xx)) %>% 
+  pull(s_xx)
+s_xx
 
-# t <- beta_1/
+# find standard error of beta coef
+se_beta = sqrt(error_var$var_std_err/s_xx)
+se_beta
+
+# find t value
+t_value <- beta1 / se_beta
+t_value
+
+# p value (twice, because we have two tails)
+dt(t_value, nrow(df) - 2 - 1) * 2
 ```
 
 
 # Task (f) Find the confidence intervall for the parameter beta!
+```{r}
+# auer formula 5.17
+
+# t-quantile
+t_quantile <- qt(1 - .05/2, nrow(df) - 2)
+
+# upper 
+beta1 + t_quantile * se_beta
+# lower
+beta1 - t_quantile * se_beta
+```
+
 
 # Task (g) Determine an appropriate measure for goodness of fit!
 ```{r}
-
+df %>% 
+  mutate(y_pred = beta0 + beta1  * x,
+         explained_var = (y_pred - mean(y))^2,
+         total_var = (y - mean(y))^2) %>% 
+  summarise(
+    r_squared = sum(explained_var) / sum(total_var)
+  )
 ```
 
 
@@ -130,3 +161,40 @@ beta0 + beta1 * 10
 ```
 
 # Task (i) Find the prediction intervall at x = 10 and interpret the result obtained!
+```{r}
+# source: auer p 125, formula 7.5
+# error_var * [1 + 1/n + (x  - mean(x))^2 / var_x]
+err_var <- error_var$var_std_err
+error_at_10 <- err_var * (1 + 1/nrow(df) + (10 - mean(df$x))^2 / s_xx)
+
+pred_10 <- beta0 + beta1  * 10
+
+
+# upper
+pred_10 + error_at_10
+
+# lower
+pred_10 - error_at_10
+```
+
+
+```{r}
+tibble(
+  x = -5:15
+) %>% 
+  mutate(pred = beta0 + beta1  * x,
+         pred_interval_error = err_var * (1 + 1/21 + (x - mean(x))^2 / var(x)),
+         lower = pred - pred_interval_error,
+         upper = pred + pred_interval_error) %>% 
+  pivot_longer(c(pred, lower, upper)) %>% 
+  ggplot(aes(x, value, colour = name)) +
+  geom_line() +
+  labs(colour = NULL, y = "y")
+```
+
+
+# correct solution
+```{r}
+my_mod <- lm(y ~ x, data = df)
+summary(my_mod)
+```
