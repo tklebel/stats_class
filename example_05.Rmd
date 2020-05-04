@@ -1,0 +1,96 @@
+---
+title: "Example 2"
+author: "Thomas Klebel"
+date: "1 5 2020"
+output: html_document
+---
+
+# Task desc
+Diamond prices in Singapur are analysed using the features: Diamond ID, weight in carat, Color
+(classes D, E, F, G, H, I), Carity (Klassen IF, SV1, SV2, VVS1, VVS2) and price (in Singapur-
+Dollars). The data can be found in “Diamant.csv”.
+Carry out a regression analysis to explain the price!
+
+```{r, message=FALSE}
+library(tidyverse)
+library(patchwork)
+theme_set(theme_bw())
+diamant <- read_csv("data/Diamant.csv") %>% 
+  select(-ID)
+```
+
+
+
+
+# (a) How does the model look like, determine the coefficients and interpret them!
+```{r}
+mod1 <- lm(Preis ~ ., data = diamant)
+summary(mod1)
+```
+
+- Karat hat starken Einfluss auf Preis, je höher Karat desto höher Preis
+- Farbe D (ref) ist die teuerste, die anderen sind günstiger
+- Klarkeit IF (ref) ist wiederum am teuersten, die anderen unterschiedlich
+günstiger
+
+
+# (b) Determine the residuals and visualize them graphically!
+```{r}
+resids_1 <- tibble(
+  resids = mod1$residuals,
+  index = seq_along(resids)
+)
+
+plot_diag <- function(df) {
+  p1 <- ggplot(df, aes(resids)) +
+    geom_histogram(bins = 40)
+  
+
+  p2 <- ggplot(df, aes(index, resids)) +
+    geom_point()
+
+  p3 <- ggplot(df, aes(sample = resids)) +
+    geom_qq_line() +
+    geom_qq()
+  
+  p1 / (p2 + p3)
+}
+
+
+plot_diag(resids_1)
+```
+
+
+
+
+# (c) How do the residuals change, if the log-price is explained and quadratic weight CARAT2 is used in addition to the other explanatory variables?
+```{r}
+mod2 <- lm(log(Preis) ~ Farbe + Klarheit + Karat * I(Karat^2), data = diamant)
+resids_2 <- tibble(
+  resids = mod2$residuals,
+  index = seq_along(resids)
+)
+
+plot_diag(resids_2)
+
+```
+
+
+
+# (d) Which price is predicted for a diamond of 0.5 carat with color D in class SV1, which price for color G?
+```{r}
+tibble(
+  Karat = c(.5, .5),
+  Farbe = c("D", "G"),
+  Klarheit = c("VS1", "VS1")
+) %>% 
+  predict(mod2, newdata = .) %>% 
+  set_names(c("D", "G"))
+```
+
+
+# (e) Find the confidence interval for the coefficient of the weight!
+```{r}
+confint(mod2) 
+```
+
