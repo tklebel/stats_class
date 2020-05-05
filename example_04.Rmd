@@ -53,7 +53,7 @@ mod1 <- lm(LUEGE ~ ., data = df_clean)
 - ANZAHL_AFF
 
 
-(b) Interpret the parameters!
+# (b) Interpret the parameters!
 ```{r}
 summary(mod1)
 ```
