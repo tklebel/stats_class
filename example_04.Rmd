@@ -106,8 +106,11 @@ Falls standard error gemeint ist, direkt die werte in den ersten zeilen, sonst
 die wurzeln. Es sollten eigentlich direkt die ersten werte korrekt sein.
 ```{r}
 std_err <- 5.092
-# std deviation of error
-sqrt(std_err)
+std_err
+
+
+# standardabweichung der steigung des alters war die richtige antwort.
+
 
 std_err_age <- 0.028694   
 # std dev of age 
@@ -118,6 +121,7 @@ sqrt(std_err_age)
 
 # (g) Carry out an F-test for the hypothesis H0 : beta1 = beta2 =    = betak = 0! What does the result tell us?
 Mindestens ein betakoeffizient ist nicht null.
+
 
 # (h) How does the model change, if in addition to the existing variables ALTER2 is used as a predictor?
 ```{r}

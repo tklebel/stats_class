@@ -57,10 +57,11 @@ stärker bei höheren Einkommen. Diese kaufen zwar mehr, reagieren aber "stärke
 auf die Preisänderung.
 
 # (c) Interpret the other parameters, if they are significant.
-Höhere Temperatur und höheres Einkommen führen zu mehr verkauftem Eis.
+Höhere Temperatur und höheres Einkommen führen zu mehr verkauftem Eis, wenn 
+andere gleich bleiben.
 
 # (d) How large are the variance of the error term and the adjusted R-squared (interpret the figures)?
-Varianz des Fehlers: Im Mittel weicht unsere Schätzung um 30.94 von den wahren
+Varianz des Fehlers: Im Mittel weicht unsere Schätzung um 30.94^2 von den wahren
 Werten ab.
 
 
@@ -69,6 +70,9 @@ der Varianz nicht erklärt werden, weil mglw. relevante Parameter fehlen.
 
 # (e) What is the confidence interval of the temperature effect?
 ```{r}
+# t mit 24 freiheitsgraden
+# 
+# t wert aus tabelle ist nicht t wert, den wir für konfidenzintervall benötigen
 interval <- qnorm(.975) * 0.42
 # upper bound:
 2.82 +  interval

@@ -125,7 +125,7 @@ t_value <- beta1 / se_beta
 t_value
 
 # p value (twice, because we have two tails)
-dt(t_value, nrow(df) - 2 - 1) * 2
+dt(t_value, nrow(df) - 2) * 2
 ```
 
 
@@ -172,9 +172,12 @@ pred_10 <- beta0 + beta1  * 10
 
 # upper
 pred_10 + error_at_10
-
+# 5.1
 # lower
 pred_10 - error_at_10
+# 14.43
+# 
+# there is probably an error with the t-value calculation
 ```
 
 
