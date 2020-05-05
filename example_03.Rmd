@@ -55,6 +55,7 @@ Basiseffekte: Je höher einkommen und je höher der Preis, desto mehr wird verka
 Aber: insgesamt je höher der Preis, desto weniger wird gekauft, dieser Effekt ist
 stärker bei höheren Einkommen. Diese kaufen zwar mehr, reagieren aber "stärker"
 auf die Preisänderung.
+
 # (c) Interpret the other parameters, if they are significant.
 Höhere Temperatur und höheres Einkommen führen zu mehr verkauftem Eis.
 
