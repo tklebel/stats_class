@@ -62,6 +62,19 @@ summary(mod1)
 - Restzucker: `r coef(mod1)[["RESTZUCKER"]]`
 
 
+```{r}
+car::vif(mod1)
+alc %>% 
+  summarise(cor = cor(DICHTE, RESTZUCKER),
+            mean_dichte = mean(DICHTE),
+            sd_dichte = sd(DICHTE),
+            min_dichte = min(DICHTE),
+            max_dichte = max(DICHTE))
+```
+
+
+
+
 # (b) Estiamte ALCOHOL for a wine of SORT = 2 with specific gravity DICHTE = 0.999, RESTZUCKER = 5.6; CHLORIDE = 0.041; PH = 3.21 and WEINSAEU = 6.7?
 
 ```{r}

@@ -433,6 +433,24 @@ broom::augment(mod1) %&gt;%
 <li>Dichte: -675.4049997</li>
 <li>Restzucker: 0.2246795</li>
 </ul>
+<pre class="r"><code>car::vif(mod1)</code></pre>
+<pre><code>##                GVIF Df GVIF^(1/(2*Df))
+## DICHTE     5.659765  1        2.379026
+## RESTZUCKER 4.462728  1        2.112517
+## SORTE      1.479550  3        1.067468
+## CHLORIDE   1.235992  1        1.111752
+## WEINSAEU   1.863719  1        1.365181
+## PH         1.756098  1        1.325178</code></pre>
+<pre class="r"><code>alc %&gt;% 
+  summarise(cor = cor(DICHTE, RESTZUCKER),
+            mean_dichte = mean(DICHTE),
+            sd_dichte = sd(DICHTE),
+            min_dichte = min(DICHTE),
+            max_dichte = max(DICHTE))</code></pre>
+<pre><code>## # A tibble: 1 x 5
+##     cor mean_dichte sd_dichte min_dichte max_dichte
+##   &lt;dbl&gt;       &lt;dbl&gt;     &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt;
+## 1 0.798       0.994   0.00258      0.987       1.00</code></pre>
 </div>
 <div id="b-estiamte-alcohol-for-a-wine-of-sort-2-with-specific-gravity-dichte-0.999-restzucker-5.6-chloride-0.041-ph-3.21-and-weinsaeu-6.7" class="section level1">
 <h1>(b) Estiamte ALCOHOL for a wine of SORT = 2 with specific gravity DICHTE = 0.999, RESTZUCKER = 5.6; CHLORIDE = 0.041; PH = 3.21 and WEINSAEU = 6.7?</h1>
