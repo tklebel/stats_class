@@ -1,0 +1,94 @@
+---
+title: "Example 6"
+author: "Thomas Klebel"
+date: "9 5 2020"
+output: html_document
+---
+
+# Task desc
+An analysis was carried out to investigate the differences of the alcohol concentration in wines.
+For this purpose the following features were measured for 500 wines: tartaric of wine WEINSAEU
+(in g=dm3), acetic acid ESSAEU (in g=dm3), citric acid ZTROSAEU (in g=dm3), residual sugar
+RESTZUCKER (in g=dm3), chloride CHLORIDE (in g=dm3), specific gravity DICHTE (in
+g=cm3), PH, SULFAT (in g=dm3), ALCOHOL (in Vol%), SORT (Type 1, 2, 3, 4). The data are
+found in “WeinAlk.csv”.
+
+Carry out a regression analysis to explain ALCOHOL using the independent variables DICHTE,
+RESTZUCKER, SORT, CHLORIDE, WEINSAEU und PH durch!
+
+```{r, message=FALSE}
+library(tidyverse)
+library(patchwork)
+theme_set(theme_bw())
+alc <- read_csv("data/WeinAlk.csv", locale = locale(decimal_mark = ",")) %>% 
+  mutate(SORTE = as.factor(SORTE))
+```
+
+
+```{r}
+mod1 <- lm(ALKOHOL ~ DICHTE + RESTZUCKER + SORTE + CHLORIDE + WEINSAEU + PH, 
+           data = alc)
+```
+
+
+```{r}
+plot_diag <- function(df) {
+  p1 <- ggplot(df, aes(.resid)) +
+    geom_histogram(bins = 40)
+  
+
+  p2 <- ggplot(df, aes(.fitted, .resid)) +
+    geom_point()
+
+  p3 <- ggplot(df, aes(sample = .resid)) +
+    geom_qq_line() +
+    geom_qq() +
+    labs(x = NULL, y = NULL)
+  
+  p1 / (p2 + p3)
+}
+
+broom::augment(mod1) %>% 
+  plot_diag()
+```
+
+
+# (a) Determine the coefficients of DICHTE and RESTZUCKER?
+```{r}
+summary(mod1)
+```
+
+- Dichte: `r coef(mod1)[["DICHTE"]]`
+- Restzucker: `r coef(mod1)[["RESTZUCKER"]]`
+
+
+# (b) Estiamte ALCOHOL for a wine of SORT = 2 with specific gravity DICHTE = 0.999, RESTZUCKER = 5.6; CHLORIDE = 0.041; PH = 3.21 and WEINSAEU = 6.7?
+
+```{r}
+tibble(WEINSAEU = 6.7, 
+       RESTZUCKER = 5.6,
+       CHLORIDE = .041, 
+       DICHTE = .999,
+       PH = 3.21, 
+       SORTE = "2") %>% 
+  predict(mod1, newdata = .)
+```
+
+
+# (c) Find R2 and the variance of the error term?
+```{r}
+summary(mod1)$r.squared
+# variance of error
+summary(mod1)$sigma^2
+```
+
+# (d) By how much does ALCOHOL change from SORT = 2 to SORT = 3, if all other parameters remain the same?
+Differenz ist nicht statistisch signifikant!
+```{r}
+alc2 <- alc %>% 
+  mutate(SORTE = relevel(SORTE, "2"))
+mod2 <- update(mod1, data = alc2)
+coef(mod2)[["SORTE3"]]
+summary(mod2)
+```
+
