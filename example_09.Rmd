@@ -1,0 +1,136 @@
+---
+title: "Example 9"
+author: "Thomas Klebel"
+date: "9 5 2020"
+output: html_document
+---
+
+# Task desc
+
+```{r, message=FALSE}
+library(tidyverse)
+library(patchwork)
+theme_set(theme_bw())
+grades <- read_csv("data/Mathematics.csv")
+```
+
+
+# (a) Use a regression analysis to estimate a student’s FinalScore.
+```{r}
+mod1 <- lm(FinalScore ~ ., data = grades)
+summary(mod1)
+```
+
+```{r}
+plot_diag <- function(df) {
+  p1 <- ggplot(df, aes(.resid)) +
+    geom_histogram(bins = 40)
+  
+
+  p2 <- ggplot(df, aes(.fitted, .resid)) +
+    geom_point()
+
+  p3 <- ggplot(df, aes(sample = .resid)) +
+    geom_qq_line() +
+    geom_qq() +
+    labs(x = NULL, y = NULL)
+  
+  p1 / (p2 + p3)
+}
+
+broom::augment(mod1) %>% 
+  plot_diag()
+```
+
+Was ist mit der schrägen Linie in den Residuen?
+
+```{r}
+broom::augment(mod1) %>% 
+  arrange(.resid) %>% 
+  select(FinalScore:G1, .fitted, .resid) %>% 
+  head(30) %>% 
+  knitr::kable()
+```
+
+Fälle mit aus bisher unerklärlichen Gründen finalScore von 0, wo deutlich 
+höherer Score vorhergesagt wird.
+
+## i. Which of the features are significant (alpha = 0:05) and how can they be interpreted (interpretation for each significant feature separately!)?
+- Age: for each additional year in age, final grade is 
+`r abs(coef(mod1)[["age"]])` *lower* (cet. par.)
+- Failures: for each additional past failure, final grade is 
+`r abs(coef(mod1)[["failures"]])` *lower* (cet. par.)
+- Absences: for each additional absence, final grade is 
+`r coef(mod1)[["absences"]]` *higher* (cet. par.). this is a bit 
+counter-intuitive.
+- G1: for each additional point in the first period grade, final grade is 
+`r coef(mod1)[["G1"]]` *higher* (cet. par.).
+
+```{r, message=FALSE}
+ggplot(grades, aes(absences, FinalScore)) +
+  geom_jitter() +
+  geom_smooth()
+
+grades %>% 
+  filter(FinalScore > 0) %>% 
+  ggplot(aes(absences, FinalScore)) +
+  geom_jitter() +
+  geom_smooth()
+```
+
+
+## ii. By how much is the FinalScore of male students in school ‘MS‘ higher/lower than that of male in school ‘GP‘ provided that the other features remain unchanged?
+Final score is `r coef(mod1)[["schoolMS"]]` higher.
+
+## iii. By how much is the FinalScore of male students in school ‘MS‘ higher/lower than that of female in school ‘GP‘ provided that the other features remain unchanged?
+```{r}
+coef(mod1)[["schoolMS"]] + coef(mod1)[["sexM"]]
+```
+
+
+
+## iv. By how much does the FinalScore change if the first period grade ‘G1‘ changes by 5 units?
+```{r}
+coef(mod1)[["G1"]] * 5
+```
+
+
+## v. How large is the estimated FinalScore of a male student in school ‘MS‘ at age 17 who has chosen this school because of reputation, never consumes alcohol on weekends, but has 50 absences and no failures, and a first period grade of 10?
+```{r}
+pred_base <- data.frame(
+  sex = "M",
+  school = "MS",
+  age = 17,
+  reason = "reputation",
+  Walc = 0,
+  absences = 50,
+  failures = 0,
+  G1 = 10
+)
+
+first_pred <- predict(mod1, newdata = pred_base)
+first_pred
+```
+
+
+## vi. By how much does the FinalScore change if ‘failures‘ increase by 2 units
+```{r}
+second_pred <- pred_base %>% 
+  mutate(failures = failures + 2) %>% 
+  predict(mod1, newdata = .)
+second_pred
+
+second_pred - first_pred
+```
+FinalScore is lower
+
+## vii. How large is R2?
+```{r}
+summary(mod1)$r.squared
+```
+
+## viii. Determine the 95% confidence interval for the parameter of age.
+```{r}
+confint(mod1)
+```
+
