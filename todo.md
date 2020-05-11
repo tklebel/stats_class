@@ -1,1 +1,3 @@
 - Task 5 replot with predicted y, not with index
+- Task 6: check ceofs of first subtask DONE
+- Task 9: DONE
