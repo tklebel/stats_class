@@ -121,6 +121,9 @@ second_pred <- pred_base %>%
   predict(mod1, newdata = .)
 second_pred
 
+# alternative
+coef(mod1)[["failures"]] * 2
+
 second_pred - first_pred
 ```
 FinalScore is lower
@@ -133,6 +136,27 @@ summary(mod1)$r.squared
 ## viii. Determine the 95% confidence interval for the parameter of age.
 ```{r}
 confint(mod1)
+```
+
+
+```{r}
+# calculate conf.int by hand
+# get coefficient
+beta <- coef(mod1)[["age"]] 
+
+# get t value
+t_value <- qt(.975, nrow(grades) - length(coef(mod1)))
+# caution: value in output is test-statistic for whether beta == 0.
+# we need theoretical quantile for our conf.int
+# # degrees of freedom: n - k - 1 with k = number of variables in model
+
+std_dev <- summary(mod1)$coefficients["age", "Std. Error"]
+
+# lower
+beta - t_value * std_dev
+
+# upper
+beta + t_value * std_dev
 ```
 
 
