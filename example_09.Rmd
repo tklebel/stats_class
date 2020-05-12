@@ -69,7 +69,8 @@ counter-intuitive.
 ```{r, message=FALSE}
 ggplot(grades, aes(absences, FinalScore)) +
   geom_jitter() +
-  geom_smooth()
+  geom_smooth() +
+  geom_smooth(method = "lm", se = FALSE, colour = "red")
 
 grades %>% 
   filter(FinalScore > 0) %>% 
@@ -154,37 +155,33 @@ summary(mod2)$r.squared
 ```
 
 # ii. How does the FinalScore change, if failures change by 1 unit while the other features remain unchanged?
+# iii. How does the FinalScore change, if absences change by 1 unit while the other features remain unchanged?
 ```{r}
-pred_base %>% 
-  mutate(failures = list(0:3)) %>% 
+failres_absences <- pred_base %>% 
+  mutate(failures = list(0:3),
+         absences = list(c(0, 5, 10, 20, 50))) %>% 
   unnest(failures) %>% 
-  predict(mod2, newdata = .) %>% 
-  tibble::enframe(name = NULL) %>% 
-  rename(pred = value) %>% 
-  mutate(diff = pred - lag(pred),
-         failures = 0:3) %>% 
+  unnest(absences) %>% 
+  broom::augment(mod2, newdata = .) %>% 
+  select(failures, absences, .fitted) %>% 
+  mutate(diff = .fitted - lag(.fitted),
+         diff = case_when(failures == 0 ~ NA_real_,
+                          TRUE ~ diff)) %>% 
+  arrange(absences)
+
+failres_absences %>% 
   knitr::kable()
 ```
 
-# iii. How does the FinalScore change, if absences change by 1 unit while the other features remain unchanged?
-```{r}
-pred_base %>% 
-  mutate(absences = list(seq(0, 93, by = 10))) %>% 
-  unnest(absences) %>% 
-  predict(mod2, newdata = .) %>% 
-  tibble::enframe(name = NULL) %>% 
-  rename(pred = value) %>% 
-  mutate(diff = pred - lag(pred),
-         absences = seq(0, 93, by = 10)) %>% 
-  knitr::kable()
-```
+
+
 
 # iv. How can we interpret the interaction term? Is it significant and what does this mean?
 It is significant.
 
 ```{r}
 pred_base %>% 
-  mutate(absences = list(seq(0, 93, by = 10)),
+  mutate(absences = list(seq(0, 93, by = 5)),
          failures = list(0:3)) %>% 
   unnest(failures) %>% 
   unnest(absences) %>% 
