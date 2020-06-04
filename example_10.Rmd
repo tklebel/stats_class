@@ -1,0 +1,85 @@
+---
+title: "Example 10"
+author: "Thomas Klebel"
+date: "4 6 2020"
+output: html_document
+---
+
+(good tutorial: https://afit-r.github.io/hc_clustering)
+
+# Task desc
+
+```{r, message=FALSE}
+input_df <- tibble::tibble(
+  company = 1:5,
+  avg_unit_cost = c(1, 2.5, 6, 7, 6.2)
+)
+```
+
+
+The task is to group the companies according to similarities of unit cost.
+
+
+## (a) Find the distance matrix!
+```{r}
+distm <- dist(input_df, method = "euc")
+distm
+```
+
+## (b) Carry out a hierarchical cluster analysis using single linkage!
+```{r}
+single <- hclust(distm, method = "single")
+```
+
+
+
+
+## (c) Determine the cophenetic matrix and draw a dendrogram!
+```{r}
+cophenetic(single)
+```
+
+```{r}
+plot(single)
+```
+
+
+## (d) Which and how many clusters can be found?
+Two clusters: (1, 2) & (3, 4, 5)
+
+## (e) Use the random cluster centrs a = 6 and b = 7 to carry out a k-means clustering? After how many steps does this method stop? Does the solution differ from that found by the hierarchical method?
+```{r}
+# specify centers
+custom_centers <- matrix(c(1, 6, 1, 7), byrow = TRUE, ncol = 2)
+custom_centers
+
+res_kmeans <- kmeans(input_df, centers = custom_centers)
+
+res_kmeans
+res_kmeans$centers
+res_kmeans$iter
+
+
+
+plot(input_df, col = res_kmeans$cluster)
+```
+
+
+```{r}
+# this seems odd: if I only specify one center (i.e. (6, 7) than of course we 
+# will only find one cluster)
+# 
+custom_centers2 <- matrix(c(6, 7), ncol = 2)
+custom_centers2
+
+res_kmeans2 <- kmeans(input_df, centers = custom_centers2)
+
+res_kmeans2
+res_kmeans2$centers
+res_kmeans2$iter
+
+
+
+plot(input_df, col = res_kmeans2$cluster)
+```
+
