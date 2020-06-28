@@ -38,9 +38,6 @@ library(caret)
 theme_set(hrbrthemes::theme_ipsum(base_family = "Hind"))
 
 house_data <- read_csv("data/Dataset_HousePrices.csv")
-house_train <- house_data %>% 
-  filter(!is.na(SalePrice))
-house_predict <- anti_join(house_data, house_train)
 ```
 
 Wichtige Voraussetzung für eine brauchbare Vorhersage ist die korrekte 
@@ -59,7 +56,7 @@ Im Folgenden wird zuerst eine Übersicht aller Variablen dargestellt, bevor
 jeder der Prädiktoren einzeln untersucht wird.
 
 ```{r, fig.width=15}
-vis_dat(house_train)
+vis_dat(house_data)
 ```
 
 Drei Erkenntnisse lassen sich aus dieser Grafik ziehen:
@@ -73,7 +70,7 @@ umkodieren beheben. Möglicherweise trifft ein selbes Muster auch auf andere
 Variablen mit fehlenden Werten zu.
 
 ```{r}
-house_train %>% 
+house_data %>% 
   select_if(~any(is.na(.x))) %>% 
   vis_miss(sort_miss = TRUE)
 ```
@@ -85,13 +82,7 @@ Variablen erklären, und werden daher imputiert. Selbiges gilt für die Variable
 zu Masonry veneer und der elektrischen Einrichtung.
 
 ```{r}
-house_train <- house_train %>% 
-  mutate(PoolQC = recode(PoolQC, .missing = "no pool"),
-         Alley = recode(Alley, .missing = "no alley"),
-         GarageQual = recode(GarageQual, .missing = "no garage"),
-         GarageCond = recode(GarageCond, .missing = "no garage"))
-
-house_predict <- house_predict %>% 
+house_data <- house_data %>% 
   mutate(PoolQC = recode(PoolQC, .missing = "no pool"),
          Alley = recode(Alley, .missing = "no alley"),
          GarageQual = recode(GarageQual, .missing = "no garage"),
@@ -100,7 +91,7 @@ house_predict <- house_predict %>%
 
 ## Zielvariable
 ```{r}
-ggplot(house_train, aes(SalePrice)) +
+ggplot(house_data, aes(SalePrice)) +
   geom_density()
 ```
 
@@ -108,7 +99,7 @@ Die Zielvariable ist nicht normalverteilt, die Vorhersage würde vermutlich durc
 eine Transformation profitieren.
 
 ```{r}
-ggplot(house_train, aes(SalePrice)) +
+ggplot(house_data, aes(SalePrice)) +
   geom_density() +
   scale_x_log10()
 ```
@@ -124,7 +115,7 @@ kategoriale Prädiktoren (violin plot + scatter), eine für metrische Variablen
 (Scatterplot).
 
 ```{r}
-compare_cat <- function(var, df = house_train) {
+compare_cat <- function(var, df = house_data) {
   var <- enquo(var)
   
   ggplot(df, aes(y = SalePrice, x = as.factor(!!var))) +
@@ -132,7 +123,7 @@ compare_cat <- function(var, df = house_train) {
     geom_jitter(width = .1, alpha = .1)
 }
 
-compare_cont <- function(var, df = house_train) {
+compare_cont <- function(var, df = house_data) {
   
   cor <- summarise(df, cor(SalePrice, {{var}}, use = "pairwise.complete.obs")) %>% 
     as.numeric()
@@ -416,25 +407,79 @@ compare_cont(YrSold)
 ```
 Auch diese Variable wird nicht verwendet.
 
+
+# Daten vorbereiten
+```{r, cache=TRUE}
+prep1 <- house_data %>% 
+  mutate(MSSubClass = as.factor(MSSubClass),
+         Id = as.character(Id)) %>% 
+  mutate_if(is.character, as.factor) %>% 
+  select(-Street, -Utilities, -RoofStyle, -RoofMatl, -LowQualFinSF, 
+         -EnclosedPorch, -ScreenPorch, -X3SsnPorch, -PoolArea, -PoolQC, 
+         -MoSold, -YrSold)
+
+# recode factors with low cases
+prep2 <- prep1 %>% 
+  mutate(LandSlope = case_when(LandSlope == "Gtl" ~ "yes",
+                               TRUE ~ "No"),
+         Condition = case_when(Condition == "Norm" ~ "Norm",
+                               Condition == "Artery" ~ "Artery",
+                               Condition == "Feedr" ~ "Feedr",
+                               TRUE ~ "Other"),
+         Heating = case_when(Heating == "GasA" ~ "GasA",
+                             TRUE ~ "Other")) %>% 
+  select(-Id)
+
+
+# define what to impute (i.e. exclude SalePrice from model)
+design_matrix <- is.na(prep2)
+design_matrix <- design_matrix %>% 
+  as.data.frame() %>% 
+  mutate(SalePrice = FALSE)
+
+imputed <- mice(prep2, m = 1, maxit = 5, method = "cart", where = design_matrix)
+imp_data <- complete(imputed)
+
+prep3 <- preProcess(imp_data, method = c("center", "scale", "YeoJohnson", "nzv"))
+prep3
+house_transformed <- predict(prep3, imp_data)
+house_transformed <- cbind(Id = prep1$Id, house_transformed)
+
+# bring back untransformed outcome
+house_transformed <- mutate(house_transformed, SalePrice = prep2$SalePrice)
+```
+
+
+```{r, message=FALSE}
+house_train <- house_transformed %>% 
+  filter(!is.na(SalePrice))
+house_predict <- anti_join(house_transformed, house_train)
+```
+
 # Lineares Modell
 ```{r, cache=TRUE}
 set.seed(12345)
 ctrl <- trainControl(method = "repeatedcv", repeats = 5)
 
 lm_fit1 <- train(
-  log(SalePrice) ~ log(LotArea) + OverallQual,
+  log(SalePrice) ~ LotArea + OverallQual,
   data = house_train,
   method = "lm",
-  preProc = c("center", "scale", "knnImpute"),
   trControl = ctrl
 )
 
 lm_fit2 <- train(
-  log(SalePrice) ~ log(LotArea) + OverallQual + CentralAir + MSSubClass + MSZoning +
+  log(SalePrice) ~ LotArea + OverallQual + CentralAir + MSSubClass + MSZoning +
        Alley + LotShape + YearBuilt + GarageQual,
   data = house_train,
   method = "lm",
-  preProc = c("center", "scale", "knnImpute"),
+  trControl = ctrl
+)
+
+lm_fit_full <- train(
+  log(SalePrice) ~ MSSubClass + MSZoning + LotFrontage + LotArea + Alley + OverallQual + CentralAir  + LotShape + YearBuilt + GarageQual,
+  data = house_train,
+  method = "lm",
   trControl = ctrl
 )
 ```
@@ -451,11 +496,10 @@ ctrl <- trainControl(method = "repeatedcv", repeats = 5)
 lambda <- 10^seq(-3, 3, length = 100)
 
 lasso <- train(
-  log(SalePrice) ~ log(LotArea) + OverallQual + CentralAir + MSSubClass + MSZoning +
+  log(SalePrice) ~ LotArea + OverallQual + CentralAir + MSSubClass + MSZoning +
        Alley + LotShape + YearBuilt + GarageQual,
   data = house_train,
   method = "glmnet",
-  preProc = c("center", "scale", "knnImpute"),
   trControl = ctrl,
   tuneGrid = expand.grid(alpha = 0, lambda = lambda)
 )
@@ -468,20 +512,21 @@ set.seed(12345)
 ctrl <- trainControl(method = "repeatedcv", repeats = 5)
 
 enet <- train(
-  log(SalePrice) ~ log(LotArea) + OverallQual + CentralAir + MSSubClass + MSZoning +
-       Alley + LotShape + YearBuilt + GarageQual,
+  log(SalePrice) ~ MSSubClass + MSZoning  + LotArea + Alley + OverallQual + CentralAir  + LotShape + YearBuilt + GarageQual,
   data = house_train,
   method = "glmnet",
-  preProc = c("center", "scale", "knnImpute"),
   trControl = ctrl,
   tuneLength = 10
 )
+
+# LotFrontage creates issues here for some reason
 ```
 
 
 # Modelle Vergleichen
 ```{r}
-res <- resamples(list(lm1 = lm_fit1, lm2 = lm_fit2, lasso = lasso, enet = enet))
+res <- resamples(list(lm1 = lm_fit1, lm2 = lm_fit2, full_lm = lm_fit_full,
+                      lasso = lasso, enet = enet))
 summary(res)
 ```
 
