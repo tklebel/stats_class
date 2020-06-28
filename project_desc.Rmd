@@ -33,6 +33,7 @@ Auf noch kompliziertere Herangehensweisen (stacking) wird verzichtet.
 ```{r, message=FALSE}
 library(tidyverse)
 library(visdat)
+library(caret)
 
 theme_set(hrbrthemes::theme_ipsum(base_family = "Hind"))
 
@@ -416,5 +417,71 @@ compare_cont(YrSold)
 Auch diese Variable wird nicht verwendet.
 
 # Lineares Modell
+```{r}
+set.seed(12345)
+ctrl <- trainControl(method = "repeatedcv", repeats = 5)
 
+lm_fit1 <- train(
+  log(SalePrice) ~ log(LotArea) + OverallQual,
+  data = house_train,
+  method = "lm",
+  preProc = c("center", "scale", "knnImpute"),
+  trControl = ctrl
+)
+
+lm_fit2 <- train(
+  log(SalePrice) ~ log(LotArea) + OverallQual + CentralAir + MSSubClass + MSZoning +
+       Alley + LotShape + YearBuilt + GarageQual,
+  data = house_train,
+  method = "lm",
+  preProc = c("center", "scale", "knnImpute"),
+  trControl = ctrl
+)
+```
+
+
+
+
+
+# Lasso
+```{r}
+set.seed(12345)
+ctrl <- trainControl(method = "repeatedcv", repeats = 5)
+
+lambda <- 10^seq(-3, 3, length = 100)
+
+lasso <- train(
+  log(SalePrice) ~ log(LotArea) + OverallQual + CentralAir + MSSubClass + MSZoning +
+       Alley + LotShape + YearBuilt + GarageQual,
+  data = house_train,
+  method = "glmnet",
+  preProc = c("center", "scale", "knnImpute"),
+  trControl = ctrl,
+  tuneGrid = expand.grid(alpha = 0, lambda = lambda)
+)
+```
+
+
+# Elastic Net
+```{r}
+set.seed(12345)
+ctrl <- trainControl(method = "repeatedcv", repeats = 5)
+
+enet <- train(
+  log(SalePrice) ~ log(LotArea) + OverallQual + CentralAir + MSSubClass + MSZoning +
+       Alley + LotShape + YearBuilt + GarageQual,
+  data = house_train,
+  method = "glmnet",
+  preProc = c("center", "scale", "knnImpute"),
+  trControl = ctrl,
+  tuneLength = 10
+)
+```
+
+
+# Modelle Vergleichen
+```{r}
+res <- resamples(list(lm1 = lm_fit1, lm2 = lm_fit2, lasso = lasso, enet = enet))
+summary(res)
+```
 
