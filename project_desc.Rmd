@@ -89,6 +89,12 @@ house_train <- house_train %>%
          Alley = recode(Alley, .missing = "no alley"),
          GarageQual = recode(GarageQual, .missing = "no garage"),
          GarageCond = recode(GarageCond, .missing = "no garage"))
+
+house_predict <- house_predict %>% 
+  mutate(PoolQC = recode(PoolQC, .missing = "no pool"),
+         Alley = recode(Alley, .missing = "no alley"),
+         GarageQual = recode(GarageQual, .missing = "no garage"),
+         GarageCond = recode(GarageCond, .missing = "no garage"))
 ```
 
 ## Zielvariable
@@ -120,7 +126,7 @@ kategoriale Prädiktoren (violin plot + scatter), eine für metrische Variablen
 compare_cat <- function(var, df = house_train) {
   var <- enquo(var)
   
-  ggplot(df, aes(y = SalePrice, x = !!var)) +
+  ggplot(df, aes(y = SalePrice, x = as.factor(!!var))) +
     geom_violin(adjust = .6, draw_quantiles = c(.25, .5, .75)) +
     geom_jitter(width = .1, alpha = .1)
 }
@@ -133,7 +139,8 @@ compare_cont <- function(var, df = house_train) {
   cor <- glue::glue("cor = {format(cor, digits = 2)}")
   
   position <- df %>% 
-    summarise(x_pos = max({{var}}) - max({{var}}) * .1,
+    summarise(x_pos = max({{var}}, na.rm = T) - 
+                (max({{var}}, na.rm = T) - min({{var}}, na.rm = T)) * .1,
            y_pos = max(SalePrice) - max(SalePrice) * .1)
   
   var <- enquo(var)
@@ -147,12 +154,267 @@ compare_cont <- function(var, df = house_train) {
 ```
 
 
+```{r}
+compare_cat(MSSubClass)
+```
+
+
+Die folgenden Grafiken dienen dazu zu entscheiden, ob eine Variable ins Modell
+aufgenommen werden soll, und ob Transformationen notwendig sind. Sofern kein 
+Kommentar zur Grafik erfolgt wird die Variable so wie sie ist ins Modell 
+aufgenommen.
+
 
 ```{r}
-compare_cat(Street)
+compare_cat(MSZoning)
+```
+
+
+```{r}
+compare_cont(LotFrontage)
 ```
 
 ```{r}
 compare_cont(log(LotArea))
 ```
+
+Der Zusammenhang wird besser modelliert, wenn von LotArea der log genommen wird.
+Nachdem es Strukturbrüche gibt wäre es vermutlich hilfreich splines zu verwenden.
+
+```{r}
+compare_cat(Street)
+```
+
+Die Variable wird nicht aufgenommen.
+
+
+```{r}
+compare_cat(Alley)
+```
+
+```{r}
+compare_cat(LotShape)
+```
+
+```{r}
+compare_cat(LandContour)
+```
+
+```{r}
+compare_cat(Utilities)
+```
+
+
+```{r}
+compare_cat(LotConfig)
+```
+
+```{r}
+compare_cat(LandSlope)
+```
+
+```{r}
+compare_cat(Condition)
+```
+
+```{r}
+compare_cat(BldgType)
+```
+
+
+```{r}
+compare_cont(OverallQual)
+```
+
+```{r}
+compare_cont(OverallCond)
+```
+
+```{r}
+compare_cont(YearBuilt)
+```
+
+Hier scheint ein quadratischer Term angebracht.
+
+```{r}
+compare_cont(YearRemodAdd)
+```
+
+```{r}
+compare_cat(RoofStyle)
+```
+
+
+```{r}
+compare_cat(RoofMatl)
+```
+
+Die Variablen zum Dach haben nur wenige Werte in den jeweils schwächer besetzten
+Kategorien und werden daher weggelassen.
+
+
+```{r}
+compare_cat(MasVnrType)
+```
+
+```{r}
+compare_cont(MasVnrArea)
+```
+
+```{r}
+compare_cat(ExterQual)
+```
+
+```{r}
+compare_cat(ExterCond)
+```
+
+```{r}
+compare_cont(TotalBsmtSF)
+```
+
+```{r}
+compare_cat(Heating)
+```
+
+```{r}
+compare_cat(HeatingQC)
+```
+
+
+```{r}
+compare_cat(CentralAir)
+```
+
+```{r}
+compare_cat(Electrical)
+```
+
+
+```{r}
+compare_cont(X1stFlrSF)
+```
+
+```{r}
+compare_cont(X2ndFlrSF)
+```
+
+```{r}
+compare_cont(LowQualFinSF)
+```
+
+Diese Variable wird nicht aufgenommen.
+
+
+```{r}
+compare_cont(GrLivArea)
+```
+
+```{r}
+compare_cat(BsmtFullBath)
+```
+
+Diese Variable wird als Dummy codiert.
+
+```{r}
+compare_cat(BsmtHalfBath)
+```
+Diese ebenso.
+
+```{r}
+compare_cat(FullBath)
+```
+```{r}
+compare_cat(HalfBath)
+```
+
+```{r}
+compare_cat(BedroomAbvGr)
+```
+Referenzkategorie: 3
+```{r}
+compare_cat(KitchenAbvGr)
+```
+
+Referenzkategorie: 1
+
+```{r}
+compare_cont(TotRmsAbvGrd)
+```
+```{r}
+compare_cont(Fireplaces)
+```
+
+```{r}
+compare_cont(GarageCars)
+```
+
+```{r}
+compare_cont(GarageArea)
+```
+
+```{r}
+compare_cat(GarageQual)
+```
+
+Ref: TA
+
+```{r}
+compare_cat(GarageCond)
+```
+Ref: TA
+
+
+```{r}
+compare_cat(PavedDrive)
+```
+
+```{r}
+compare_cont(WoodDeckSF)
+```
+
+
+```{r}
+compare_cont(OpenPorchSF)
+```
+
+```{r}
+compare_cont(EnclosedPorch)
+```
+Diese Variable wird nicht verwendet (geringe Korrelation).
+
+```{r}
+compare_cont(X3SsnPorch)
+```
+Diese wird auch nicht verwendet.
+
+```{r}
+compare_cont(ScreenPorch)
+```
+Diese auch nicht.
+
+```{r}
+compare_cont(PoolArea)
+```
+
+```{r}
+compare_cat(PoolQC)
+```
+
+Die Variablen zum Pool sind wenig aussagekräftig aufgrund einer geringen Fallzahl
+und werden daher nicht verwendet.
+
+```{r}
+compare_cat(MoSold)
+```
+
+Diese Variable wird nicht verwendet
+
+```{r}
+compare_cont(YrSold)
+```
+Auch diese Variable wird nicht verwendet.
+
+# Lineares Modell
+
 
