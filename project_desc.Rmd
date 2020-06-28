@@ -28,8 +28,6 @@ Kreuzvalidierung (mit Hilfe des `caret`-packages) drei Modelle zu vergleichen:
 
 Auf noch kompliziertere Herangehensweisen (stacking) wird verzichtet.
 
-Nachdem die korrekten Daten bekannt sind (https://www.kaggle.com/c/house-prices-advanced-regression-techniques/data?select=train.csv) 
-kann abschließend auch der "wahre" root mean squared error berechnet werden.
 
 # Exploration
 ```{r, message=FALSE}
@@ -155,6 +153,6 @@ compare_cat(Street)
 ```
 
 ```{r}
-compare_cont(LotArea)
+compare_cont(log(LotArea))
 ```
 
