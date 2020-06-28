@@ -417,7 +417,7 @@ compare_cont(YrSold)
 Auch diese Variable wird nicht verwendet.
 
 # Lineares Modell
-```{r}
+```{r, cache=TRUE}
 set.seed(12345)
 ctrl <- trainControl(method = "repeatedcv", repeats = 5)
 
@@ -444,7 +444,7 @@ lm_fit2 <- train(
 
 
 # Lasso
-```{r}
+```{r, cache=TRUE}
 set.seed(12345)
 ctrl <- trainControl(method = "repeatedcv", repeats = 5)
 
@@ -463,7 +463,7 @@ lasso <- train(
 
 
 # Elastic Net
-```{r}
+```{r, cache=TRUE}
 set.seed(12345)
 ctrl <- trainControl(method = "repeatedcv", repeats = 5)
 
