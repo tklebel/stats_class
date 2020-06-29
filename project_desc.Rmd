@@ -139,7 +139,7 @@ compare_cont <- function(var, df = house_data) {
   position <- df %>% 
     summarise(x_pos = max({{var}}, na.rm = T) - 
                 (max({{var}}, na.rm = T) - min({{var}}, na.rm = T)) * .1,
-           y_pos = max(SalePrice) - max(SalePrice) * .1)
+           y_pos = max(SalePrice, na.rm = T) - max(SalePrice, na.rm = T) * .1)
   
   var <- enquo(var)
   
