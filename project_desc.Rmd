@@ -8,14 +8,14 @@ output: pdf_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, dev = "cairo_pdf")
 extrafont::loadfonts()
-
 ```
 
 
 # Aufgabenstellung und Herangehensweise
 Aufgabe ist es, den Verkaufspreis von Häusern auf Basis einer Reihe an 
 Prädiktoren vorherzusagen. Das konkrete Beispiel ist ein bekanntes Problem des
-maschinellen Lernens (siehe [hier](https://www.kaggle.com/c/house-prices-advanced-regression-techniques/overview).
+maschinellen Lernens (siehe [hier](https://www.kaggle.com/c/house-prices-advanced-regression-techniques/overview)
+auf Kaggle).
 
 In dieser Projektarbeit möchte ich die Chance nutzen, um fortschrittlichere
 Techniken zu erlernen und anzuwenden, die üblicherweise für solche Probleme
@@ -29,11 +29,17 @@ Kreuzvalidierung (mit Hilfe des `caret`-packages) drei Modelle zu vergleichen:
 Auf noch kompliziertere Herangehensweisen (stacking) wird verzichtet.
 
 
+Gegenüber haben die Methoden des Lasso und des elastic net den Vorteil, eine
+Penalty auf die Parameter anzuwenden, sodass diese üblicherweise nicht allzu 
+groß werden können. Dadurch lässt sich Overfitting bei gleichzeitiger Einbeziehung
+vieler Variablen vermeiden und so insgesamt eine bessere Vorhersage erreichen.
+
 # Exploration
 ```{r, message=FALSE}
 library(tidyverse)
 library(visdat)
 library(caret)
+library(mice)
 
 theme_set(hrbrthemes::theme_ipsum(base_family = "Hind"))
 
@@ -145,16 +151,151 @@ compare_cont <- function(var, df = house_data) {
 }
 ```
 
+Alle diesbezüglich erstellten Grafiken finden sich im Anhang.
+
+
+
+# Daten vorbereiten
+```{r data-prep, cache=TRUE}
+prep1 <- house_data %>% 
+  mutate(MSSubClass = as.factor(MSSubClass),
+         Id = as.character(Id)) %>% 
+  mutate_if(is.character, as.factor) %>% 
+  select(-Street, -Utilities, -RoofStyle, -RoofMatl, -LowQualFinSF, 
+         -EnclosedPorch, -ScreenPorch, -X3SsnPorch, -PoolArea, -PoolQC, 
+         -MoSold, -YrSold)
+
+# recode factors with low cases
+prep2 <- prep1 %>% 
+  mutate(LandSlope = case_when(LandSlope == "Gtl" ~ "yes",
+                               TRUE ~ "No"),
+         Condition = case_when(Condition == "Norm" ~ "Norm",
+                               Condition == "Artery" ~ "Artery",
+                               Condition == "Feedr" ~ "Feedr",
+                               TRUE ~ "Other"),
+         Heating = case_when(Heating == "GasA" ~ "GasA",
+                             TRUE ~ "Other")) %>% 
+  select(-Id)
+
+
+# define what to impute (i.e. exclude SalePrice from model)
+design_matrix <- is.na(prep2)
+design_matrix <- design_matrix %>% 
+  as.data.frame() %>% 
+  mutate(SalePrice = FALSE)
+
+imputed <- mice(prep2, m = 1, maxit = 5, method = "cart", where = design_matrix)
+imp_data <- complete(imputed)
+
+prep3 <- preProcess(imp_data, method = c("center", "scale", "YeoJohnson", "nzv"))
+prep3
+house_transformed <- predict(prep3, imp_data)
+house_transformed <- cbind(Id = prep1$Id, house_transformed)
+
+# bring back untransformed outcome
+house_transformed <- mutate(house_transformed, SalePrice = prep2$SalePrice)
+```
+
+
+```{r, message=FALSE}
+house_train <- house_transformed %>% 
+  filter(!is.na(SalePrice))
+house_predict <- anti_join(house_transformed, house_train)
+```
+
+# Lineares Modell
+```{r linear-mod, cache=TRUE}
+set.seed(12345)
+ctrl <- trainControl(method = "repeatedcv", repeats = 5)
+
+lm_fit1 <- train(
+  log(SalePrice) ~ LotArea + OverallQual,
+  data = house_train,
+  method = "lm",
+  trControl = ctrl
+)
+
+lm_fit2 <- train(
+  log(SalePrice) ~ LotArea + OverallQual + CentralAir + MSSubClass + MSZoning +
+       Alley + LotShape + YearBuilt + GarageQual,
+  data = house_train,
+  method = "lm",
+  trControl = ctrl
+)
+
+lm_fit_full <- train(
+  log(SalePrice) ~ MSSubClass + MSZoning + LotFrontage + LotArea + Alley + OverallQual + CentralAir  + LotShape + YearBuilt + GarageQual,
+  data = house_train,
+  method = "lm",
+  trControl = ctrl
+)
+```
+
+
+
+
+
+# Lasso
+```{r lasso, cache=TRUE}
+set.seed(12345)
+ctrl <- trainControl(method = "repeatedcv", repeats = 5)
+
+lambda <- 10^seq(-3, 3, length = 100)
+
+lasso <- train(
+  log(SalePrice) ~ LotArea + OverallQual + CentralAir + MSSubClass + MSZoning +
+       Alley + LotShape + YearBuilt + GarageQual,
+  data = house_train,
+  method = "glmnet",
+  trControl = ctrl,
+  tuneGrid = expand.grid(alpha = 0, lambda = lambda)
+)
+```
+
+
+# Elastic Net
+```{r elastic-net, cache=TRUE}
+set.seed(12345)
+ctrl <- trainControl(method = "repeatedcv", repeats = 5)
+
+enet <- train(
+  log(SalePrice) ~ MSSubClass + MSZoning  + LotArea + Alley + OverallQual + CentralAir  + LotShape + YearBuilt + GarageQual,
+  data = house_train,
+  method = "glmnet",
+  trControl = ctrl,
+  tuneLength = 10
+)
+
+# LotFrontage creates issues here for some reason
+```
+
+
+# Modelle Vergleichen
+```{r}
+res <- resamples(list(lm1 = lm_fit1, lm2 = lm_fit2, full_lm = lm_fit_full,
+                      lasso = lasso, enet = enet))
+summary(res)
+```
+
+
+# Anhang - Explorative Grafiken
+
+```{r setup-figs, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
+                      fig.width = 7, fig.height = 4)
+```
+
+Die folgenden Grafiken dienen dazu zu entscheiden, ob eine Variable ins Modell
+aufgenommen werden soll, und ob Transformationen notwendig sind. Sofern kein 
+Kommentar zur Grafik erfolgt wird die Variable so wie sie ist ins Modell 
+aufgenommen.
+
 
 ```{r}
 compare_cat(MSSubClass)
 ```
 
 
-Die folgenden Grafiken dienen dazu zu entscheiden, ob eine Variable ins Modell
-aufgenommen werden soll, und ob Transformationen notwendig sind. Sofern kein 
-Kommentar zur Grafik erfolgt wird die Variable so wie sie ist ins Modell 
-aufgenommen.
 
 
 ```{r}
@@ -406,127 +547,4 @@ Diese Variable wird nicht verwendet
 compare_cont(YrSold)
 ```
 Auch diese Variable wird nicht verwendet.
-
-
-# Daten vorbereiten
-```{r, cache=TRUE}
-prep1 <- house_data %>% 
-  mutate(MSSubClass = as.factor(MSSubClass),
-         Id = as.character(Id)) %>% 
-  mutate_if(is.character, as.factor) %>% 
-  select(-Street, -Utilities, -RoofStyle, -RoofMatl, -LowQualFinSF, 
-         -EnclosedPorch, -ScreenPorch, -X3SsnPorch, -PoolArea, -PoolQC, 
-         -MoSold, -YrSold)
-
-# recode factors with low cases
-prep2 <- prep1 %>% 
-  mutate(LandSlope = case_when(LandSlope == "Gtl" ~ "yes",
-                               TRUE ~ "No"),
-         Condition = case_when(Condition == "Norm" ~ "Norm",
-                               Condition == "Artery" ~ "Artery",
-                               Condition == "Feedr" ~ "Feedr",
-                               TRUE ~ "Other"),
-         Heating = case_when(Heating == "GasA" ~ "GasA",
-                             TRUE ~ "Other")) %>% 
-  select(-Id)
-
-
-# define what to impute (i.e. exclude SalePrice from model)
-design_matrix <- is.na(prep2)
-design_matrix <- design_matrix %>% 
-  as.data.frame() %>% 
-  mutate(SalePrice = FALSE)
-
-imputed <- mice(prep2, m = 1, maxit = 5, method = "cart", where = design_matrix)
-imp_data <- complete(imputed)
-
-prep3 <- preProcess(imp_data, method = c("center", "scale", "YeoJohnson", "nzv"))
-prep3
-house_transformed <- predict(prep3, imp_data)
-house_transformed <- cbind(Id = prep1$Id, house_transformed)
-
-# bring back untransformed outcome
-house_transformed <- mutate(house_transformed, SalePrice = prep2$SalePrice)
-```
-
-
-```{r, message=FALSE}
-house_train <- house_transformed %>% 
-  filter(!is.na(SalePrice))
-house_predict <- anti_join(house_transformed, house_train)
-```
-
-# Lineares Modell
-```{r, cache=TRUE}
-set.seed(12345)
-ctrl <- trainControl(method = "repeatedcv", repeats = 5)
-
-lm_fit1 <- train(
-  log(SalePrice) ~ LotArea + OverallQual,
-  data = house_train,
-  method = "lm",
-  trControl = ctrl
-)
-
-lm_fit2 <- train(
-  log(SalePrice) ~ LotArea + OverallQual + CentralAir + MSSubClass + MSZoning +
-       Alley + LotShape + YearBuilt + GarageQual,
-  data = house_train,
-  method = "lm",
-  trControl = ctrl
-)
-
-lm_fit_full <- train(
-  log(SalePrice) ~ MSSubClass + MSZoning + LotFrontage + LotArea + Alley + OverallQual + CentralAir  + LotShape + YearBuilt + GarageQual,
-  data = house_train,
-  method = "lm",
-  trControl = ctrl
-)
-```
-
-
-
-
-
-# Lasso
-```{r, cache=TRUE}
-set.seed(12345)
-ctrl <- trainControl(method = "repeatedcv", repeats = 5)
-
-lambda <- 10^seq(-3, 3, length = 100)
-
-lasso <- train(
-  log(SalePrice) ~ LotArea + OverallQual + CentralAir + MSSubClass + MSZoning +
-       Alley + LotShape + YearBuilt + GarageQual,
-  data = house_train,
-  method = "glmnet",
-  trControl = ctrl,
-  tuneGrid = expand.grid(alpha = 0, lambda = lambda)
-)
-```
-
-
-# Elastic Net
-```{r, cache=TRUE}
-set.seed(12345)
-ctrl <- trainControl(method = "repeatedcv", repeats = 5)
-
-enet <- train(
-  log(SalePrice) ~ MSSubClass + MSZoning  + LotArea + Alley + OverallQual + CentralAir  + LotShape + YearBuilt + GarageQual,
-  data = house_train,
-  method = "glmnet",
-  trControl = ctrl,
-  tuneLength = 10
-)
-
-# LotFrontage creates issues here for some reason
-```
-
-
-# Modelle Vergleichen
-```{r}
-res <- resamples(list(lm1 = lm_fit1, lm2 = lm_fit2, full_lm = lm_fit_full,
-                      lasso = lasso, enet = enet))
-summary(res)
-```
 
