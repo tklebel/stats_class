@@ -177,17 +177,10 @@ prep2 <- prep1 %>%
                              TRUE ~ "Other")) %>% 
   select(-Id)
 
+imputed <- mice(prep2, m = 1, maxit = 5, method = "cart")
+imp_data <- complete(imputed, 1)
 
-# define what to impute (i.e. exclude SalePrice from model)
-design_matrix <- is.na(prep2)
-design_matrix <- design_matrix %>% 
-  as.data.frame() %>% 
-  mutate(SalePrice = FALSE)
-
-imputed <- mice(prep2, m = 1, maxit = 5, method = "cart", where = design_matrix)
-imp_data <- complete(imputed)
-
-prep3 <- preProcess(imp_data, method = c("center", "scale", "YeoJohnson", "nzv"))
+prep3 <- preProcess(imp_data, method = c("center", "scale", "YeoJohnson"))
 prep3
 house_transformed <- predict(prep3, imp_data)
 house_transformed <- cbind(Id = prep1$Id, house_transformed)
@@ -204,9 +197,13 @@ house_predict <- anti_join(house_transformed, house_train)
 ```
 
 # Lineares Modell
+Nachdem in einem klassischen linearen Modell unmöglich alle der Variablen 
+aufgenommen werden können ohne die Annahmen des linearen Modells zu verletzen 
+werden in einem ersten Schritt zuerst zwei Modell erstellt, für die Prädiktoren
+manuell ausgewählt wurden. Im dritten Modell werden einfach alle Variablen.
 ```{r linear-mod, cache=TRUE}
 set.seed(12345)
-ctrl <- trainControl(method = "repeatedcv", repeats = 5)
+ctrl <- trainControl(method = "repeatedcv", repeats = 3)
 
 lm_fit1 <- train(
   log(SalePrice) ~ LotArea + OverallQual,
@@ -217,20 +214,24 @@ lm_fit1 <- train(
 
 lm_fit2 <- train(
   log(SalePrice) ~ LotArea + OverallQual + CentralAir + MSSubClass + MSZoning +
-       Alley + LotShape + YearBuilt + GarageQual,
+       Alley + LotShape + YearBuilt + GarageQual + GrLivArea  + TotalBsmtSF,
   data = house_train,
   method = "lm",
   trControl = ctrl
 )
 
+
 lm_fit_full <- train(
-  log(SalePrice) ~ MSSubClass + MSZoning + LotFrontage + LotArea + Alley + OverallQual + CentralAir  + LotShape + YearBuilt + GarageQual,
-  data = house_train,
+  log(SalePrice) ~ .,
+  data = house_train[, -1], # fit all vars except Id
   method = "lm",
   trControl = ctrl
 )
 ```
-
+Wie erwartet erfolgt beim dritten Modell eine Warnung, dass die Vorhersagen
+nicht zuverlässig sein könnten, weil Multikollinearität besteht. Nachdem die
+Schätzer bei Multikollinearität erwartungstreu sind sollte dies für die 
+Vorhersage allerdings kein allzu großes Problem darstellen.
 
 
 
@@ -238,7 +239,7 @@ lm_fit_full <- train(
 # Lasso
 ```{r lasso, cache=TRUE}
 set.seed(12345)
-ctrl <- trainControl(method = "repeatedcv", repeats = 5)
+ctrl <- trainControl(method = "repeatedcv", repeats = 3)
 
 lambda <- 10^seq(-3, 3, length = 100)
 
@@ -250,17 +251,33 @@ lasso <- train(
   trControl = ctrl,
   tuneGrid = expand.grid(alpha = 0, lambda = lambda)
 )
+
+lasso_full <- train(
+  log(SalePrice) ~ .,
+  data = house_train[, -1], # fit all vars except Id
+  method = "glmnet",
+  trControl = ctrl,
+  tuneGrid = expand.grid(alpha = 0, lambda = lambda)
+)
 ```
 
 
 # Elastic Net
 ```{r elastic-net, cache=TRUE}
 set.seed(12345)
-ctrl <- trainControl(method = "repeatedcv", repeats = 5)
+ctrl <- trainControl(method = "repeatedcv", repeats = 3)
 
 enet <- train(
   log(SalePrice) ~ MSSubClass + MSZoning  + LotArea + Alley + OverallQual + CentralAir  + LotShape + YearBuilt + GarageQual,
   data = house_train,
+  method = "glmnet",
+  trControl = ctrl,
+  tuneLength = 10
+)
+
+enet_full <- train(
+  log(SalePrice) ~ .,
+  data = house_train[, -1], # fit all vars except Id
   method = "glmnet",
   trControl = ctrl,
   tuneLength = 10
@@ -273,9 +290,28 @@ enet <- train(
 # Modelle Vergleichen
 ```{r}
 res <- resamples(list(lm1 = lm_fit1, lm2 = lm_fit2, full_lm = lm_fit_full,
-                      lasso = lasso, enet = enet))
+                      lasso = lasso, lasso_full = lasso_full,
+                      enet = enet, enet_full = enet_full))
 summary(res)
 ```
+
+Im Vergleich zeigt sich der niedrigste Root Mean Squared Error bei dem 
+Modell des Elastic net mit allen Variablen. Der Unterschied zum klassischen
+linearen Modell ist allerdings klein. 
+
+Für die Vorhersage wird das Modell "enet_full" verwendet.
+
+# Vorhersage
+```{r}
+prediction <- predict(enet_full, house_train)
+
+tibble(Id = house_train$Id, SalePrice = exp(prediction)) %>% 
+  write_csv("house_prices_klebel.csv")
+```
+
+
+
+
 
 
 # Anhang - Explorative Grafiken
